@@ -159,6 +159,22 @@ Response:
 }
 ```
 
+`meta.scrapedAt` is deliberately human-readable (`Aug 31, 2026, 6:35:11 PM`), not ISO 8601 --
+meant for someone eyeballing a response, not for sorting/parsing. `meta.cached` tells you
+whether this exact data was just fetched from LinkedIn or served from cache (see Caching below).
+
+### Caching
+
+Successful scrapes are cached in memory per profile URL for
+`PROFILE_CACHE_TTL_MS` (default 5 min), and concurrent requests for the
+same URL share one underlying LinkedIn fetch instead of firing one each --
+this service runs on a single shared LinkedIn session, so avoiding
+redundant load on it is a real concern, not just a performance nicety.
+Instance-scoped (plain in-memory `Map`), so best-effort on serverless
+rather than a distributed cache -- fine for the traffic this is built for.
+`meta.scrapedAt` always reflects the real scrape time (not "now"), so a
+cached response still tells you honestly how stale it is.
+
 Errors follow one shape:
 
 ```json
@@ -173,14 +189,6 @@ Errors follow one shape:
 | 503 | `SESSION_EXPIRED` | session cookie is dead — redo Setup step 1 |
 | 504 | `TIMEOUT` | scrape exceeded `REQUEST_TIMEOUT_MS` (default 180000) |
 | 500 | `INTERNAL` | unexpected error, detail in server logs only |
-
-Successful scrapes are cached in memory per profile URL for
-`PROFILE_CACHE_TTL_MS` (default 5 min), and concurrent requests for the
-same URL share one underlying LinkedIn fetch instead of firing one each --
-this service runs on a single shared LinkedIn session, so avoiding
-redundant load on it is a real concern, not just a performance nicety.
-Instance-scoped (plain in-memory `Map`), so best-effort on serverless
-rather than a distributed cache -- fine for the traffic this is built for.
 
 ### `GET /health`
 
@@ -219,12 +227,12 @@ The pipeline:
    request is a reusable template — swap the target profile's slug in the
    URL/body, and the exact same headers/cookies work for any profile,
    indefinitely, with zero browser involvement. This is what
-   `lib/fetch-profile.js` does at runtime.
-4. **Parse the Flight-protocol response.** `lib/flight-resolver.js`
+   `lib/fetch-profile.ts` does at runtime.
+4. **Parse the Flight-protocol response.** `lib/flight-resolver.ts`
    parses the chunk stream and resolves every cross-reference into a
-   normal nested object. `lib/flight-extract.js` strips structural noise
+   normal nested object. `lib/flight-extract.ts` strips structural noise
    (hashed CSS classnames, tracking IDs, CDN URLs, self-view UI chrome)
-   down to real text. `lib/parsers.js` groups that text into typed
+   down to real text. `lib/parsers.ts` groups that text into typed
    objects per entry (one job, one degree, one certification), using
    LinkedIn's own `"hr"` divider line as the per-entry boundary.
 
@@ -274,7 +282,7 @@ service. Stated here as an assumption, not confirmed with the client.
   LinkedIn's network requests (browser DevTools, or an automated capture
   — see Approach); that tooling isn't included in this repo.
 - No rate limiting or API-key auth on this service's own endpoint by
-  default (`src/middleware/apiKey.js` is wired but off — set `API_KEY`
+  default (`src/middleware/apiKey.ts` is wired but off — set `API_KEY`
   to enable). Deliberate: expected usage is low-volume manual testing.
 
 ## Tests
