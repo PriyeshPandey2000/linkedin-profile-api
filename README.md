@@ -139,6 +139,16 @@ in practice, well within even the free tier's limit.
 
 ### `POST /profile`
 
+Live deployment (no local setup needed to try it):
+
+```
+curl -X POST https://linkedin-profile-api-coral.vercel.app/profile \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://www.linkedin.com/in/some-person/"}'
+```
+
+Local dev (after Setup below):
+
 ```
 curl -X POST http://localhost:3000/profile \
   -H "Content-Type: application/json" \
@@ -195,12 +205,50 @@ Errors follow one shape:
 | 504 | `TIMEOUT` | scrape exceeded `REQUEST_TIMEOUT_MS` (default 180000) |
 | 500 | `INTERNAL` | unexpected error, detail in server logs only |
 
+Successful scrapes are cached in memory per profile URL for
+`PROFILE_CACHE_TTL_MS` (default 5 min), and concurrent requests for the
+same URL share one underlying LinkedIn fetch instead of firing one each --
+this service runs on a single shared LinkedIn session, so avoiding
+redundant load on it is a real concern, not just a performance nicety.
+Instance-scoped (plain in-memory `Map`), so best-effort on serverless
+rather than a distributed cache -- fine for the traffic this is built for.
+
 ### `GET /health`
 
 Liveness check. Does not touch LinkedIn.
 
+```
+curl https://linkedin-profile-api-coral.vercel.app/health
+```
+
+## Tests
+
+```
+npm test
+```
+
+Node's built-in test runner (`node:test`), zero added dependencies. Covers
+the pure parsing/filtering logic in `lib/` -- noise filtering, per-entry
+grouping, pagination stop conditions, top-card extraction -- with fixtures
+built from real captured response shapes, not simplified toy data. Several
+cases are direct regression tests for real bugs found while building this
+(a section heading shifting the first parsed entry's fields, a CSS noise
+value corrupting a degree/field split, an off-by-one in the pagination
+stop condition that silently truncated a 12-item list to 10). No live
+LinkedIn calls -- nothing here needs a session cookie.
+
 ## Known limitations
 
+- **The response cache and request coalescing are per-instance, not
+  shared.** Both live in a plain in-memory `Map` (see API section above) --
+  on Vercel, if a burst of traffic spins up more than one serverless
+  instance, each gets its own empty cache, so two requests for the same
+  profile can still both hit LinkedIn if they land on different instances.
+  Within a single (warm) instance it works as described. Fine for this
+  service's expected traffic (low-volume manual testing); a real
+  distributed cache (Redis/Vercel KV) would be the fix if that ever
+  stopped being true, deliberately not added here as it'd be
+  over-engineering for the current scale.
 - **Experience entries with multiple roles at the same company** (a
   promotion history) are not split into individual role objects — an
   earlier attempt at this produced confidently-wrong results (mistook an
@@ -211,10 +259,6 @@ Liveness check. Does not touch LinkedIn.
   that account) hits LinkedIn's edit-mode UI, which structures some
   fields less cleanly than the public view does. Not the primary use
   case — this service is for looking up other people's profiles.
-- **A timed-out request does not cancel the in-flight scrape.**
-  `REQUEST_TIMEOUT_MS` stops the HTTP response from hanging, but the
-  underlying LinkedIn calls keep running in the background — no
-  `AbortController` wired through `lib/`'s `fetch()` calls yet.
 - **Session cookies expire.** No automatic renewal; re-run Setup step 1
   when a request starts returning `SESSION_EXPIRED`.
 - **PROFILE_NOT_FOUND detection is best-effort**, based on the absence of

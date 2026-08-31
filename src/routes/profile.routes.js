@@ -11,16 +11,17 @@ router.post('/profile', apiKey, validateProfileUrl, async (req, res, next) => {
   const startedAt = Date.now();
 
   try {
-    const data = await profileService.getProfile(url);
+    const { data, scrapedAt, cached } = await profileService.getProfile(url);
     logger.info('profile scrape succeeded', {
       requestId: req.id,
       url,
+      cached,
       durationMs: Date.now() - startedAt,
     });
     res.json({
       success: true,
       data,
-      meta: { scrapedAt: new Date().toISOString(), sourceUrl: url },
+      meta: { scrapedAt, cached, sourceUrl: url },
     });
   } catch (err) {
     next(err); // -> errorHandler.js

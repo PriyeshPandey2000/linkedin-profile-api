@@ -17,6 +17,12 @@ const config = {
   // connection open indefinitely if something upstream stalls.
   requestTimeoutMs: Number(process.env.REQUEST_TIMEOUT_MS) || 180000,
 
+  // How long a successfully-scraped profile is served from cache before
+  // re-fetching. Protects the single shared LinkedIn session from
+  // redundant concurrent/repeat load (see profileService.js) -- not a
+  // freshness guarantee, just a short window against duplicate requests.
+  profileCacheTtlMs: Number(process.env.PROFILE_CACHE_TTL_MS) || 5 * 60 * 1000,
+
   // Not enforced yet -- deliberately descoped for now (expected usage is
   // low-volume manual/interviewer testing, see README known limitations).
   // Left wired through config/middleware so turning it on later is a
