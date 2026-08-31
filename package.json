@@ -2,14 +2,14 @@
   "name": "linkedin-profile-scraper",
   "version": "1.0.0",
   "description": "Reverse-engineered LinkedIn profile API -- pure HTTP, no browser at request-time.",
-  "main": "server.js",
+  "main": "dist/server.js",
   "engines": {
     "node": ">=18.0.0"
   },
   "scripts": {
     "build": "tsc && mkdir -p dist/lib && cp lib/templates.json dist/lib/templates.json",
     "start": "npm run build && node dist/server.js",
-    "dev": "npm run build && node --watch server.js",
+    "dev": "tsx watch server.ts",
     "test": "npm run build && node --test \"dist/test/*.test.js\""
   },
   "keywords": [],
@@ -25,6 +25,7 @@
     "@types/cheerio": "^0.22.35",
     "@types/express": "^5.0.6",
     "@types/node": "^26.4.0",
+    "tsx": "^4.23.13",
     "typescript": "^5.9.3"
   }
 }

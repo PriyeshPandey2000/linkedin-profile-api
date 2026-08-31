@@ -11,13 +11,15 @@ below.
 
 ## Project layout
 
-The source is TypeScript, compiled to CommonJS in `dist/` by `tsc` (the
-`build` npm script also copies `lib/templates.json` into `dist/lib/`). The
-root entrypoints are thin `.js` shims that load the compiled output, so
-`npm start` and Vercel's routing keep working unchanged.
+The source is TypeScript throughout, no compiled output committed. Locally,
+`npm run dev` runs `server.ts` directly via `tsx` (no build step); `npm start`
+compiles with `tsc` (the `build` script also copies `lib/templates.json` into
+`dist/lib/`) and runs the compiled `dist/server.js`. On Vercel, `api/index.ts`
+is transpiled by Vercel's own Node runtime -- no local build step needed there
+either.
 
 ```
-server.js         local entry-point shim -> require('./dist/server')
+server.ts         local entry point (npm run dev / npm start -- calls app.listen())
 api/index.ts      Vercel serverless entry point (exports the app, no .listen())
 vercel.json       routes every path to /api/index, sets function maxDuration
 src/              Express app: routes, middleware, config, logging (TS)
@@ -97,7 +99,7 @@ vercel
 Set `LINKEDIN_COOKIE` in the project's environment variables first
 (Vercel dashboard → Settings → Environment Variables). `vercel.json`
 routes every request through `api/index.ts` (the serverless entry point —
-same Express app as `server.js`, minus the `.listen()` call Vercel doesn't
+same Express app as `server.ts`, minus the `.listen()` call Vercel doesn't
 want — Vercel compiles the TypeScript itself), and sets a 120s function
 timeout: comfortable headroom over the ~30–40s a heavy profile (full
 Skills/Certifications/Education pagination) takes, well within even the
