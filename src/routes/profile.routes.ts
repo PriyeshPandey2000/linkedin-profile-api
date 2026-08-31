@@ -24,7 +24,14 @@ router.post('/profile', apiKey, validateProfileUrl, async (req: Request, res: Re
     res.json({
       success: true,
       data,
-      meta: { scrapedAt, cached, sourceUrl: url },
+      meta: {
+        scrapedAt: new Date(scrapedAt).toLocaleString('en-US', {
+          dateStyle: 'medium',
+          timeStyle: 'medium',
+        }),
+        cached,
+        sourceUrl: url,
+      },
     });
   } catch (err) {
     next(err); // -> errorHandler.ts
