@@ -7,9 +7,10 @@
     "node": ">=18.0.0"
   },
   "scripts": {
-    "start": "node server.js",
-    "dev": "node --watch server.js",
-    "test": "node --test"
+    "build": "tsc && mkdir -p dist/lib && cp lib/templates.json dist/lib/templates.json",
+    "start": "npm run build && node dist/server.js",
+    "dev": "npm run build && node --watch server.js",
+    "test": "npm run build && node --test \"dist/test/*.test.js\""
   },
   "keywords": [],
   "author": "",
@@ -19,5 +20,11 @@
     "cheerio": "^1.2.0",
     "dotenv": "^17.4.2",
     "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "@types/cheerio": "^0.22.35",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.4.0",
+    "typescript": "^5.9.3"
   }
 }
