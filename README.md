@@ -9,56 +9,6 @@ HTTP requests against LinkedIn's internal SDUI endpoints, replaying a
 request shape captured once via a one-time recon pass. See **Approach**
 below.
 
-## Approach
-
-LinkedIn's profile page is a React Server Components (RSC) application.
-The data doesn't come from a documented public API — it comes from
-internal endpoints (`flagship-web/rsc-action/actions/component`,
-`.../details/<section>/`, `.../actions/pagination`) that return a React
-Flight-protocol stream: newline-delimited chunks, some referencing others
-by index (`"$L7"` = "the real value is in chunk 7").
-
-The pipeline:
-
-1. **Authenticate once.** A LinkedIn session cookie (`li_at` +
-   `JSESSIONID`) is obtained by logging in — either by hand (copy the
-   cookie out of a real browser) or by scripting LinkedIn's native
-   email/password form. Google OAuth login cannot be automated (Google
-   detects and blocks automated browsers at the login step); the native
-   form has no such block.
-2. **Capture the request shape once.** A short-lived browser session
-   (development-time only, not part of this repo) watches the network
-   while a real profile page loads, and records the exact headers/body
-   LinkedIn's own frontend sends for each type of call: fetching a
-   profile section, fetching a full section via its "Show all" details
-   page, and paginating a long list (skills, certifications, education)
-   via `start`/`count` cursor parameters. The result is `lib/templates.json`
-   (included, committed, secrets redacted — see Setup).
-3. **Replay that shape via plain HTTP, forever.** The captured
-   request is a reusable template — swap the target profile's slug in the
-   URL/body, and the exact same headers/cookies work for any profile,
-   indefinitely, with zero browser involvement. This is what
-   `lib/fetch-profile.js` does at runtime.
-4. **Parse the Flight-protocol response.** `lib/flight-resolver.js`
-   parses the chunk stream and resolves every cross-reference into a
-   normal nested object. `lib/flight-extract.js` strips structural noise
-   (hashed CSS classnames, tracking IDs, CDN URLs, self-view UI chrome)
-   down to real text. `lib/parsers.js` groups that text into typed
-   objects per entry (one job, one degree, one certification), using
-   LinkedIn's own `"hr"` divider line as the per-entry boundary.
-
-### On "no browser"
-
-No browser dependency anywhere in this repo — `package.json` has no
-Playwright/Puppeteer/Selenium entry, and nothing under `lib/` or `src/`
-launches one. A browser was used during development to obtain the
-initial session cookie and observe the request shapes now baked into
-`lib/templates.json`, but that was a one-time, external setup step, not
-part of what's shipped or what runs per-request. This is an explicit
-reading of the requirement: the *scraping mechanism* uses no browser;
-how the session cookie was originally obtained is outside the running
-service. Stated here as an assumption, not confirmed with the client.
-
 ## Project layout
 
 ```
@@ -91,11 +41,11 @@ only thing needed to run this yourself is a live session cookie:
 
 ### 1. Get a session cookie
 
-Log into LinkedIn in a normal browser (your own account — see README's
-**Known limitations** for the ToS/risk considerations of this). Open
-DevTools → Network tab → click any request to `linkedin.com` → under
-Request Headers, copy the full `Cookie` value (one long string, not just
-`li_at`).
+Log into LinkedIn in a normal browser (your own account — see the
+**Known limitations** section for the ToS/risk considerations of this).
+Open DevTools → Network tab → click any request to `linkedin.com` →
+under Request Headers, copy the full `Cookie` value (one long string,
+not just `li_at`).
 
 ### 2. Set it as an environment variable
 
@@ -147,7 +97,7 @@ curl -X POST https://linkedin-profile-api-coral.vercel.app/profile \
   -d '{"url":"https://www.linkedin.com/in/some-person/"}'
 ```
 
-Local dev (after Setup below):
+Local dev (after Setup above):
 
 ```
 curl -X POST http://localhost:3000/profile \
@@ -221,21 +171,55 @@ Liveness check. Does not touch LinkedIn.
 curl https://linkedin-profile-api-coral.vercel.app/health
 ```
 
-## Tests
+## Approach
 
-```
-npm test
-```
+LinkedIn's profile page is a React Server Components (RSC) application.
+The data doesn't come from a documented public API — it comes from
+internal endpoints (`flagship-web/rsc-action/actions/component`,
+`.../details/<section>/`, `.../actions/pagination`) that return a React
+Flight-protocol stream: newline-delimited chunks, some referencing others
+by index (`"$L7"` = "the real value is in chunk 7").
 
-Node's built-in test runner (`node:test`), zero added dependencies. Covers
-the pure parsing/filtering logic in `lib/` -- noise filtering, per-entry
-grouping, pagination stop conditions, top-card extraction -- with fixtures
-built from real captured response shapes, not simplified toy data. Several
-cases are direct regression tests for real bugs found while building this
-(a section heading shifting the first parsed entry's fields, a CSS noise
-value corrupting a degree/field split, an off-by-one in the pagination
-stop condition that silently truncated a 12-item list to 10). No live
-LinkedIn calls -- nothing here needs a session cookie.
+The pipeline:
+
+1. **Authenticate once.** A LinkedIn session cookie (`li_at` +
+   `JSESSIONID`) is obtained by logging in — either by hand (copy the
+   cookie out of a real browser) or by scripting LinkedIn's native
+   email/password form. Google OAuth login cannot be automated (Google
+   detects and blocks automated browsers at the login step); the native
+   form has no such block.
+2. **Capture the request shape once.** A short-lived browser session
+   (development-time only, not part of this repo) watches the network
+   while a real profile page loads, and records the exact headers/body
+   LinkedIn's own frontend sends for each type of call: fetching a
+   profile section, fetching a full section via its "Show all" details
+   page, and paginating a long list (skills, certifications, education)
+   via `start`/`count` cursor parameters. The result is `lib/templates.json`
+   (included, committed, secrets redacted — see Setup).
+3. **Replay that shape via plain HTTP, forever.** The captured
+   request is a reusable template — swap the target profile's slug in the
+   URL/body, and the exact same headers/cookies work for any profile,
+   indefinitely, with zero browser involvement. This is what
+   `lib/fetch-profile.js` does at runtime.
+4. **Parse the Flight-protocol response.** `lib/flight-resolver.js`
+   parses the chunk stream and resolves every cross-reference into a
+   normal nested object. `lib/flight-extract.js` strips structural noise
+   (hashed CSS classnames, tracking IDs, CDN URLs, self-view UI chrome)
+   down to real text. `lib/parsers.js` groups that text into typed
+   objects per entry (one job, one degree, one certification), using
+   LinkedIn's own `"hr"` divider line as the per-entry boundary.
+
+### On "no browser"
+
+No browser dependency anywhere in this repo — `package.json` has no
+Playwright/Puppeteer/Selenium entry, and nothing under `lib/` or `src/`
+launches one. A browser was used during development to obtain the
+initial session cookie and observe the request shapes now baked into
+`lib/templates.json`, but that was a one-time, external setup step, not
+part of what's shipped or what runs per-request. This is an explicit
+reading of the requirement: the *scraping mechanism* uses no browser;
+how the session cookie was originally obtained is outside the running
+service. Stated here as an assumption, not confirmed with the client.
 
 ## Known limitations
 
@@ -273,3 +257,19 @@ LinkedIn calls -- nothing here needs a session cookie.
 - No rate limiting or API-key auth on this service's own endpoint by
   default (`src/middleware/apiKey.js` is wired but off — set `API_KEY`
   to enable). Deliberate: expected usage is low-volume manual testing.
+
+## Tests
+
+```
+npm test
+```
+
+Node's built-in test runner (`node:test`), zero added dependencies. Covers
+the pure parsing/filtering logic in `lib/` -- noise filtering, per-entry
+grouping, pagination stop conditions, top-card extraction -- with fixtures
+built from real captured response shapes, not simplified toy data. Several
+cases are direct regression tests for real bugs found while building this
+(a section heading shifting the first parsed entry's fields, a CSS noise
+value corrupting a degree/field split, an off-by-one in the pagination
+stop condition that silently truncated a 12-item list to 10). No live
+LinkedIn calls -- nothing here needs a session cookie.
