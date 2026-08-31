@@ -25,7 +25,12 @@ export function createApp(): express.Express {
   // Serve the static landing page (public/index.html) at / for local
   // development. On Vercel the static file is served directly by the edge
   // before this function runs, so this only matters for the local server.
-  app.use(express.static(path.join(__dirname, '..', '..', 'public')));
+  // process.cwd() (not __dirname) because __dirname's depth from
+  // project root differs between `npm run dev` (tsx runs src/app.ts
+  // directly, __dirname = <root>/src) and `npm start` (compiled
+  // dist/src/app.js, __dirname = <root>/dist/src) -- cwd is the project
+  // root in both, since both are invoked via npm scripts from there.
+  app.use(express.static(path.join(process.cwd(), 'public')));
 
   app.get('/', (req: Request, res: Response) => {
     res.json({

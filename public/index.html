@@ -45,10 +45,12 @@
       font-size: 13px;
       line-height: 1.5;
       overflow-x: auto;
-      white-space: pre;
       word-break: break-word;
     }
+    .cmdtext { display: block; white-space: pre; margin-top: 10px; }
     .cmdbar { display: flex; gap: 8px; align-items: center; }
+    .outbar { display: none; margin-bottom: 8px; }
+    .outbar.show { display: flex; }
     .copy, .run {
       padding: 4px 12px;
       font-size: 12px;
@@ -89,46 +91,112 @@
       border: 0;
       padding: 0;
     }
-    .status { font-size: 12px; font-weight: 600; color: #656d76; font-family: inherit; }
+    .status { font-size: 12px; font-weight: 600; color: #656d76; font-family: inherit; display: inline-flex; align-items: center; gap: 6px; }
+    .run:disabled { opacity: .6; cursor: default; }
+    .footer { display: flex; justify-content: center; margin-top: 4px; }
+    .sitelink {
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: inherit;
+      text-decoration: none;
+      border: 1px solid #d0d7de;
+      border-radius: 6px;
+      background: #fff;
+      color: #57606a;
+    }
+    .sitelink:hover { background: #eef1f4; }
+    @media (prefers-color-scheme: dark) {
+      .sitelink { background: #21262d; border-color: #30363d; color: #8b949e; }
+    }
+    .spinner {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border: 2px solid currentColor;
+      border-right-color: transparent;
+      border-radius: 50%;
+      animation: spin .6s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
     label { font-size: 13px; font-weight: 600; color: #656d76; }
     @media (prefers-color-scheme: dark) { label, .status { color: #8b949e; } }
+    .urlinput {
+      width: 100%;
+      padding: 8px 10px;
+      font-size: 13px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      border: 1px solid #d0d7de;
+      border-radius: 8px;
+      background: #fff;
+      color: #1a1d21;
+    }
+    .urlinput:focus { outline: 2px solid #0969da; outline-offset: -1px; }
+    @media (prefers-color-scheme: dark) {
+      .urlinput { background: #0d1117; border-color: #30363d; color: #e6edf3; }
+    }
   </style>
 </head>
 <body>
   <div class="card">
     <label>POST /profile — fetch a profile</label>
-    <div class="cmd">
-      <div class="cmdbar">
+    <input type="text" id="profile-url" class="urlinput"
+      value="https://www.linkedin.com/in/priyesh-pandey-6575901a0/"
+      placeholder="https://www.linkedin.com/in/&lt;slug&gt;/"
+      oninput="updateProfileCmd()">
+    <div class="cmd"><div class="cmdbar">
         <button class="copy" onclick="copyText(this,0)">Copy</button>
         <button class="run" onclick="runProfile(this)">Run</button>
         <span class="status" id="status-profile"></span>
-      </div>
-curl -X POST https://linkedin-profile-api-coral.vercel.app/profile \
+      </div><code class="cmdtext" id="cmdtext-profile">curl -X POST https://linkedin-profile-api-coral.vercel.app/profile \
   -H "Content-Type: application/json" \
-  -d '{"url":"https://www.linkedin.com/in/priyesh-pandey-6575901a0/"}'
+  -d '{"url":"https://www.linkedin.com/in/priyesh-pandey-6575901a0/"}'</code></div>
+    <div class="outbar" id="outbar-profile">
+      <button class="copy" onclick="copyOut(this,'out-profile')">Copy response</button>
     </div>
     <pre class="out" id="out-profile"></pre>
 
     <label>GET /health — liveness check</label>
-    <div class="cmd">
-      <div class="cmdbar">
+    <div class="cmd"><div class="cmdbar">
         <button class="copy" onclick="copyText(this,1)">Copy</button>
         <button class="run" onclick="runHealth(this)">Run</button>
         <span class="status" id="status-health"></span>
-      </div>
-curl https://linkedin-profile-api-coral.vercel.app/health
+      </div><code class="cmdtext">curl https://linkedin-profile-api-coral.vercel.app/health</code></div>
+    <div class="outbar" id="outbar-health">
+      <button class="copy" onclick="copyOut(this,'out-health')">Copy response</button>
     </div>
     <pre class="out" id="out-health"></pre>
+
+    <div class="footer">
+      <a class="sitelink" href="https://www.priyeshpandey.com/" target="_blank" rel="noopener noreferrer">priyeshpandey.com</a>
+    </div>
   </div>
 
   <script>
-    const CMDS = [
-      'curl -X POST https://linkedin-profile-api-coral.vercel.app/profile \\\n  -H "Content-Type: application/json" \\\n  -d \'{"url":"https://www.linkedin.com/in/priyesh-pandey-6575901a0/"}\'',
-      'curl https://linkedin-profile-api-coral.vercel.app/health'
-    ];
+    const API = 'https://linkedin-profile-api-coral.vercel.app';
+    const HEALTH_CMD = 'curl ' + API + '/health';
+
+    function buildProfileCurl(url) {
+      return 'curl -X POST ' + API + '/profile \\\n  -H "Content-Type: application/json" \\\n  -d \'{"url":"' + url + '"}\'';
+    }
+
+    function updateProfileCmd() {
+      const url = document.getElementById('profile-url').value;
+      document.getElementById('cmdtext-profile').textContent = buildProfileCurl(url);
+    }
 
     function copyText(btn, i) {
-      navigator.clipboard.writeText(CMDS[i]).then(() => {
+      const text = i === 0
+        ? buildProfileCurl(document.getElementById('profile-url').value)
+        : HEALTH_CMD;
+      navigator.clipboard.writeText(text).then(() => {
+        const t = btn.textContent; btn.textContent = 'Copied';
+        setTimeout(() => btn.textContent = t, 1200);
+      });
+    }
+
+    function copyOut(btn, outId) {
+      navigator.clipboard.writeText(document.getElementById(outId).textContent).then(() => {
         const t = btn.textContent; btn.textContent = 'Copied';
         setTimeout(() => btn.textContent = t, 1200);
       });
@@ -139,6 +207,7 @@ curl https://linkedin-profile-api-coral.vercel.app/health
       const st = document.getElementById(statusId);
       const text = await res.text();
       out.classList.add('show');
+      document.getElementById('outbar-' + outId.replace('out-', '')).classList.add('show');
       st.textContent = res.status + ' ' + res.statusText;
       if (text.trim()) {
         try { out.textContent = JSON.stringify(JSON.parse(text), null, 2); }
@@ -148,34 +217,41 @@ curl https://linkedin-profile-api-coral.vercel.app/health
       }
     }
 
-    const API = 'https://linkedin-profile-api-coral.vercel.app';
+    function showSpinner(statusId, label) {
+      document.getElementById(statusId).innerHTML = '<span class="spinner"></span>' + label;
+    }
 
     async function runProfile(btn) {
-      btn.textContent = 'Running…';
+      const url = document.getElementById('profile-url').value.trim();
+      btn.disabled = true;
+      showSpinner('status-profile', 'Running (can take up to ~40s for a full profile)…');
       try {
         const res = await fetch(API + '/profile', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: 'https://www.linkedin.com/in/priyesh-pandey-6575901a0/' })
+          body: JSON.stringify({ url })
         });
-        await render(res, 'out-profile', 'status-profile');
+        await render(res, 'out-profile', 'status-profile'); // overwrites the spinner with the real status
       } catch (e) {
+        document.getElementById('status-profile').innerHTML = '';
         const out = document.getElementById('out-profile');
         out.classList.add('show', 'err');
         out.textContent = 'Request failed: ' + e.message;
-      } finally { btn.textContent = 'Run'; }
+      } finally { btn.disabled = false; }
     }
 
     async function runHealth(btn) {
-      btn.textContent = 'Running…';
+      btn.disabled = true;
+      showSpinner('status-health', 'Running…');
       try {
         const res = await fetch(API + '/health');
-        await render(res, 'out-health', 'status-health');
+        await render(res, 'out-health', 'status-health'); // overwrites the spinner with the real status
       } catch (e) {
+        document.getElementById('status-health').innerHTML = '';
         const out = document.getElementById('out-health');
         out.classList.add('show', 'err');
         out.textContent = 'Request failed: ' + e.message;
-      } finally { btn.textContent = 'Run'; }
+      } finally { btn.disabled = false; }
     }
   </script>
 </body>
