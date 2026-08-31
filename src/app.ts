@@ -1,7 +1,9 @@
+import path from 'path';
 import express from 'express';
 import type { Request, Response, NextFunction } from 'express';
 
 import requestId from './middleware/requestId';
+import cors from './middleware/cors';
 import errorHandler from './middleware/errorHandler';
 import { AppError } from './errors';
 import healthRoutes from './routes/health.routes';
@@ -17,7 +19,13 @@ export function createApp(): express.Express {
   app.disable('x-powered-by');
 
   app.use(requestId);
+  app.use(cors);
   app.use(express.json({ limit: '10kb' })); // request bodies here are just {url}, no reason to accept more
+
+  // Serve the static landing page (public/index.html) at / for local
+  // development. On Vercel the static file is served directly by the edge
+  // before this function runs, so this only matters for the local server.
+  app.use(express.static(path.join(__dirname, '..', '..', 'public')));
 
   app.get('/', (req: Request, res: Response) => {
     res.json({

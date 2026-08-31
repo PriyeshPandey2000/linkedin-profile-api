@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LinkedIn Profile API</title>
+  <meta name="description" content="LinkedIn profile API endpoints.">
+  <style>
+    :root { color-scheme: light dark; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: #f5f7fa;
+      color: #1a1d21;
+    }
+    @media (prefers-color-scheme: dark) {
+      body { background: #0d1117; color: #e6edf3; }
+      .card { background: #161b22; border-color: #30363d; }
+      .cmd, .out { background: #0d1117; }
+      .copy, .run { background: #21262d; border-color: #30363d; color: #e6edf3; }
+    }
+    .card {
+      max-width: 720px;
+      width: 100%;
+      background: #fff;
+      border: 1px solid #e1e4e8;
+      border-radius: 12px;
+      padding: 32px;
+      box-shadow: 0 4px 24px rgba(0,0,0,.06);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .cmd {
+      background: #f6f8fa;
+      border: 1px solid #d0d7de;
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      overflow-x: auto;
+      white-space: pre;
+      word-break: break-word;
+    }
+    .cmdbar { display: flex; gap: 8px; align-items: center; }
+    .copy, .run {
+      padding: 4px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: inherit;
+      border: 1px solid #d0d7de;
+      border-radius: 6px;
+      background: #fff;
+      color: #0969da;
+      cursor: pointer;
+    }
+    .copy:hover, .run:hover { background: #eef1f4; }
+    .run { color: #1a7f37; }
+    .out {
+      display: none;
+      margin-top: 0;
+      background: #f6f8fa;
+      border: 1px solid #d0d7de;
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      line-height: 1.5;
+      overflow-x: auto;
+      max-height: 360px;
+      overflow-y: auto;
+      white-space: pre;
+    }
+    .out.show { display: block; }
+    .out.err { color: #cf222e; }
+    .out.meta {
+      font-family: inherit;
+      font-size: 12px;
+      color: #656d76;
+      margin-bottom: 6px;
+      white-space: normal;
+      background: transparent;
+      border: 0;
+      padding: 0;
+    }
+    .status { font-size: 12px; font-weight: 600; color: #656d76; font-family: inherit; }
+    label { font-size: 13px; font-weight: 600; color: #656d76; }
+    @media (prefers-color-scheme: dark) { label, .status { color: #8b949e; } }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <label>POST /profile — fetch a profile</label>
+    <div class="cmd">
+      <div class="cmdbar">
+        <button class="copy" onclick="copyText(this,0)">Copy</button>
+        <button class="run" onclick="runProfile(this)">Run</button>
+        <span class="status" id="status-profile"></span>
+      </div>
+curl -X POST https://linkedin-profile-api-coral.vercel.app/profile \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://www.linkedin.com/in/priyesh-pandey-6575901a0/"}'
+    </div>
+    <pre class="out" id="out-profile"></pre>
+
+    <label>GET /health — liveness check</label>
+    <div class="cmd">
+      <div class="cmdbar">
+        <button class="copy" onclick="copyText(this,1)">Copy</button>
+        <button class="run" onclick="runHealth(this)">Run</button>
+        <span class="status" id="status-health"></span>
+      </div>
+curl https://linkedin-profile-api-coral.vercel.app/health
+    </div>
+    <pre class="out" id="out-health"></pre>
+  </div>
+
+  <script>
+    const CMDS = [
+      'curl -X POST https://linkedin-profile-api-coral.vercel.app/profile \\\n  -H "Content-Type: application/json" \\\n  -d \'{"url":"https://www.linkedin.com/in/priyesh-pandey-6575901a0/"}\'',
+      'curl https://linkedin-profile-api-coral.vercel.app/health'
+    ];
+
+    function copyText(btn, i) {
+      navigator.clipboard.writeText(CMDS[i]).then(() => {
+        const t = btn.textContent; btn.textContent = 'Copied';
+        setTimeout(() => btn.textContent = t, 1200);
+      });
+    }
+
+    async function render(res, outId, statusId) {
+      const out = document.getElementById(outId);
+      const st = document.getElementById(statusId);
+      const text = await res.text();
+      out.classList.add('show');
+      st.textContent = res.status + ' ' + res.statusText;
+      if (text.trim()) {
+        try { out.textContent = JSON.stringify(JSON.parse(text), null, 2); }
+        catch { out.textContent = text; }
+      } else {
+        out.textContent = '(no body)';
+      }
+    }
+
+    const API = 'https://linkedin-profile-api-coral.vercel.app';
+
+    async function runProfile(btn) {
+      btn.textContent = 'Running…';
+      try {
+        const res = await fetch(API + '/profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: 'https://www.linkedin.com/in/priyesh-pandey-6575901a0/' })
+        });
+        await render(res, 'out-profile', 'status-profile');
+      } catch (e) {
+        const out = document.getElementById('out-profile');
+        out.classList.add('show', 'err');
+        out.textContent = 'Request failed: ' + e.message;
+      } finally { btn.textContent = 'Run'; }
+    }
+
+    async function runHealth(btn) {
+      btn.textContent = 'Running…';
+      try {
+        const res = await fetch(API + '/health');
+        await render(res, 'out-health', 'status-health');
+      } catch (e) {
+        const out = document.getElementById('out-health');
+        out.classList.add('show', 'err');
+        out.textContent = 'Request failed: ' + e.message;
+      } finally { btn.textContent = 'Run'; }
+    }
+  </script>
+</body>
+</html>
