@@ -1,0 +1,10 @@
+node_modules/
+.env
+
+# session credentials -- never commit
+auth.json
+cookies.local.json
+
+# scratch/debug artifacts from development -- also often contain other
+# real people's scraped profile data, never meant for the repo
+tmp/
