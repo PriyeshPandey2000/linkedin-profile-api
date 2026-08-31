@@ -35,20 +35,13 @@ test/            node:test suites, compiled to dist/test/
 
 ```mermaid
 flowchart LR
-    subgraph Runtime["Request-time (per request)"]
-        C["Client<br/>POST /profile"]
-        C --> R["Express app (src/app.ts)"]
-        R --> M["Middleware<br/>requestId · apiKey · validateProfileUrl"]
-        M --> S["profileService<br/>(TTL cache + in-flight coalescing)"]
-        S --> F["lib/fetch-profile.ts<br/>orchestrator"]
-        F --> L["LinkedIn<br/>(component + pagination endpoints)"]
-        S -->|"cached entry"| R
-    end
-
-    subgraph Build["Build-time (npm run build)"]
-        TS[".ts sources<br/>src/ · lib/ · api/ · test/"] -->|"tsc"| DIST["dist/ (CommonJS)"]
-        TPL["lib/templates.json"] -->|"copied"| DIST
-        DIST -->|"loaded by"| SHIM["server.js / api/index.ts"]
+    subgraph Runtime["Request-time"]
+        C["Client"] --> R["Express<br/>src/app.ts"]
+        R --> M["Middleware<br/>requestId · apiKey · validate"]
+        M --> S["profileService<br/>cache + coalescing"]
+        S --> F["fetch-profile.ts"]
+        F --> L["LinkedIn API"]
+        S -.->|"cached"| R
     end
 ```
 
