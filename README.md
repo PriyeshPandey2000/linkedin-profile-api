@@ -11,20 +11,45 @@ below.
 
 ## Project layout
 
+The source is TypeScript, compiled to CommonJS in `dist/` by `tsc` (the
+`build` npm script also copies `lib/templates.json` into `dist/lib/`). The
+root entrypoints are thin `.js` shims that load the compiled output, so
+`npm start` and Vercel's routing keep working unchanged.
+
 ```
-server.js         local entry point (npm start -- calls app.listen())
-api/index.js      Vercel serverless entry point (exports the app, no .listen())
-vercel.json       routes every path to api/index.js, sets function maxDuration
-src/              Express app: routes, middleware, config, logging
-lib/               the scraping engine (no Express/HTTP-server code)
-  fetch-profile.js   orchestrator: profile URL in, structured JSON out
-  flight-resolver.js  Flight-protocol chunk resolver
-  flight-extract.js   noise filtering + section discovery
-  parsers.js           raw text -> typed objects per entry
+server.js         local entry-point shim -> require('./dist/server')
+api/index.ts      Vercel serverless entry point (exports the app, no .listen())
+vercel.json       routes every path to /api/index, sets function maxDuration
+src/              Express app: routes, middleware, config, logging (TS)
+lib/              the scraping engine (no Express/HTTP-server code) (TS)
+  fetch-profile.ts   orchestrator: profile URL in, structured JSON out
+  flight-resolver.ts  Flight-protocol chunk resolver
+  flight-extract.ts   noise filtering + section discovery
+  parsers.ts          raw text -> typed objects per entry
   templates.json      captured request templates -- committed, but with
                        the session cookie/csrf-token fields REDACTED (see
                        Setup). The request shape isn't secret; the cookie
                        value is supplied separately at runtime.
+test/            node:test suites, compiled to dist/test/
+```
+
+```mermaid
+flowchart LR
+    subgraph Runtime["Request-time (per request)"]
+        C["Client<br/>POST /profile"]
+        C --> R["Express app (src/app.ts)"]
+        R --> M["Middleware<br/>requestId · apiKey · validateProfileUrl"]
+        M --> S["profileService<br/>(TTL cache + in-flight coalescing)"]
+        S --> F["lib/fetch-profile.ts<br/>orchestrator"]
+        F --> L["LinkedIn<br/>(component + pagination endpoints)"]
+        S -->|"cached entry"| R
+    end
+
+    subgraph Build["Build-time (npm run build)"]
+        TS[".ts sources<br/>src/ · lib/ · api/ · test/"] -->|"tsc"| DIST["dist/ (CommonJS)"]
+        TPL["lib/templates.json"] -->|"copied"| DIST
+        DIST -->|"loaded by"| SHIM["server.js / api/index.ts"]
+    end
 ```
 
 ## Setup
