@@ -34,6 +34,7 @@ test/            node:test suites, compiled to dist/test/
 ```
 
 ```mermaid
+%%{init: {"flowchart": {"nodeSpacing": 6, "rankSpacing": 28, "padding": 3}}}%%
 flowchart LR
     subgraph Runtime["Request-time"]
         C["Client"] --> R["Express<br/>src/app.ts"]
