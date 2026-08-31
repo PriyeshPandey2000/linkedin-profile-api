@@ -96,13 +96,12 @@ vercel
 
 Set `LINKEDIN_COOKIE` in the project's environment variables first
 (Vercel dashboard → Settings → Environment Variables). `vercel.json`
-routes every request through `api/index.js` (the serverless entry point
-— same Express app as `server.js`, minus the `.listen()` call Vercel
-doesn't want) and sets a 120s function timeout. Verified against Vercel's
-own docs (with Fluid Compute, default since 2025): Hobby allows up to
-300s, Pro up to 800s — 120s leaves comfortable headroom over the ~30-40s
-a heavy profile (full Skills/Certifications/Education pagination) takes
-in practice, well within even the free tier's limit.
+routes every request through `api/index.ts` (the serverless entry point —
+same Express app as `server.js`, minus the `.listen()` call Vercel doesn't
+want — Vercel compiles the TypeScript itself), and sets a 120s function
+timeout: comfortable headroom over the ~30–40s a heavy profile (full
+Skills/Certifications/Education pagination) takes, well within even the
+free tier's limit.
 
 ## API
 
@@ -156,7 +155,7 @@ Response:
     "languages": [ { "name": "English", "proficiency": "Native or bilingual proficiency" } ],
     "projects": ["..."]
   },
-  "meta": { "scrapedAt": "2026-08-29T...", "sourceUrl": "..." }
+  "meta": { "scrapedAt": "Aug 31, 2026, 6:35:11 PM", "cached": false, "sourceUrl": "..." }
 }
 ```
 
@@ -169,6 +168,7 @@ Errors follow one shape:
 | Status | Code | Meaning |
 |---|---|---|
 | 400 | `MISSING_URL` / `INVALID_URL` | request body missing or not a LinkedIn profile URL |
+| 401 | `UNAUTHORIZED` | missing/invalid `X-Api-Key` (only when `API_KEY` is set) |
 | 404 | `PROFILE_NOT_FOUND` | best-effort signal, not exhaustively tested against every not-found variant |
 | 503 | `SESSION_EXPIRED` | session cookie is dead — redo Setup step 1 |
 | 504 | `TIMEOUT` | scrape exceeded `REQUEST_TIMEOUT_MS` (default 180000) |
