@@ -62,7 +62,7 @@ only thing needed to run this yourself is a live session cookie:
 
 ### 1. Get a session cookie
 
-Log into LinkedIn in a normal browser (your own account — see the
+Log into LinkedIn in a normal browser (your own account -- see the
 **Known limitations** section for the ToS/risk considerations of this).
 Open DevTools → Network tab → click any request to `linkedin.com` →
 under Request Headers, copy the full `Cookie` value (one long string,
@@ -76,7 +76,7 @@ export LINKEDIN_COOKIE="<the full Cookie header value from step 1>"
 
 Locally: put it in `.env` (gitignored). On Vercel: set it as a project
 environment variable. `csrf-token` is derived automatically from the
-`JSESSIONID` inside this cookie string — only one secret to manage.
+`JSESSIONID` inside this cookie string -- only one secret to manage.
 
 The server checks for this at startup and refuses to start with a clear
 error if it's missing while `lib/templates.json` is in its redacted
@@ -98,9 +98,9 @@ vercel
 
 Set `LINKEDIN_COOKIE` in the project's environment variables first
 (Vercel dashboard → Settings → Environment Variables). `vercel.json`
-routes every request through `api/index.ts` (the serverless entry point —
+routes every request through `api/index.ts` (the serverless entry point --
 same Express app as `server.ts`, minus the `.listen()` call Vercel doesn't
-want — Vercel compiles the TypeScript itself), and sets a 120s function
+want -- Vercel compiles the TypeScript itself), and sets a 120s function
 timeout: comfortable headroom over the ~30–40s a heavy profile (full
 Skills/Certifications/Education pagination) takes, well within even the
 free tier's limit.
@@ -188,7 +188,7 @@ Errors follow one shape:
 | 400 | `MISSING_URL` / `INVALID_URL` | request body missing or not a LinkedIn profile URL |
 | 401 | `UNAUTHORIZED` | missing/invalid `X-Api-Key` (only when `API_KEY` is set) |
 | 404 | `PROFILE_NOT_FOUND` | best-effort signal, not exhaustively tested against every not-found variant |
-| 503 | `SESSION_EXPIRED` | session cookie is dead — redo Setup step 1 |
+| 503 | `SESSION_EXPIRED` | session cookie is dead -- redo Setup step 1 |
 | 504 | `TIMEOUT` | scrape exceeded `REQUEST_TIMEOUT_MS` (default 180000) |
 | 500 | `INTERNAL` | unexpected error, detail in server logs only |
 
@@ -203,7 +203,7 @@ curl https://linkedin-profile-api-coral.vercel.app/health
 ## Approach
 
 LinkedIn's profile page is a React Server Components (RSC) application.
-The data doesn't come from a documented public API — it comes from
+The data doesn't come from a documented public API -- it comes from
 internal endpoints (`flagship-web/rsc-action/actions/component`,
 `.../details/<section>/`, `.../actions/pagination`) that return a React
 Flight-protocol stream: newline-delimited chunks, some referencing others
@@ -212,21 +212,29 @@ by index (`"$L7"` = "the real value is in chunk 7").
 The pipeline:
 
 1. **Authenticate once.** A LinkedIn session cookie (`li_at` +
-   `JSESSIONID`) is obtained by logging in — either by hand (copy the
+   `JSESSIONID`) is obtained by logging in -- either by hand (copy the
    cookie out of a real browser) or by scripting LinkedIn's native
-   email/password form. Google OAuth login cannot be automated (Google
-   detects and blocks automated browsers at the login step); the native
-   form has no such block.
-2. **Capture the request shape once.** A short-lived browser session
-   (development-time only, not part of this repo) watches the network
-   while a real profile page loads, and records the exact headers/body
-   LinkedIn's own frontend sends for each type of call: fetching a
-   profile section, fetching a full section via its "Show all" details
-   page, and paginating a long list (skills, certifications, education)
-   via `start`/`count` cursor parameters. The result is `lib/templates.json`
-   (included, committed, secrets redacted — see Setup).
+   email/password form. Google OAuth login isn't automated here (Google's
+   login step checks a wide range of bot-detection signals -- e.g.
+   `navigator.webdriver`, CDP artifacts -- that a plain automated browser
+   trips; getting past it reliably needs stealth techniques integrated
+   deep into the browser itself, not just header/UA spoofing); the native
+   form has no such check.
+2. **Capture the request shape once.** Started by manually inspecting a
+   handful of requests in DevTools, but the profile page fires enough
+   distinct call shapes (per-section fetches, "Show all" detail pages,
+   `start`/`count` pagination) that reproducing all of them by hand
+   wasn't reliable. Switched to a short-lived browser session
+   (development-time only, not part of this repo) that watches the
+   network while a real profile page loads, and records the exact
+   headers/body LinkedIn's own frontend sends for each type of call:
+   fetching a profile section, fetching a full section via its "Show all"
+   details page, and paginating a long list (skills, certifications,
+   education) via `start`/`count` cursor parameters. The result is
+   `lib/templates.json` (included, committed, secrets redacted -- see
+   Setup).
 3. **Replay that shape via plain HTTP, forever.** The captured
-   request is a reusable template — swap the target profile's slug in the
+   request is a reusable template -- swap the target profile's slug in the
    URL/body, and the exact same headers/cookies work for any profile,
    indefinitely, with zero browser involvement. This is what
    `lib/fetch-profile.ts` does at runtime.
@@ -237,18 +245,26 @@ The pipeline:
    down to real text. `lib/parsers.ts` groups that text into typed
    objects per entry (one job, one degree, one certification), using
    LinkedIn's own `"hr"` divider line as the per-entry boundary.
-
-### On "no browser"
-
-No browser dependency anywhere in this repo — `package.json` has no
-Playwright/Puppeteer/Selenium entry, and nothing under `lib/` or `src/`
-launches one. A browser was used during development to obtain the
-initial session cookie and observe the request shapes now baked into
-`lib/templates.json`, but that was a one-time, external setup step, not
-part of what's shipped or what runs per-request. This is an explicit
-reading of the requirement: the *scraping mechanism* uses no browser;
-how the session cookie was originally obtained is outside the running
-service. Stated here as an assumption, not confirmed with the client.
+5. **Recover full lists via pagination, only when needed.** I noticed
+   Skills, Certifications, and Education previews on the main profile
+   page are capped. When a `"Show all N"` marker shows up in that
+   preview response, I call LinkedIn's own pagination endpoint directly,
+   the same `start`/`count` cursor LinkedIn's own frontend uses when you
+   click "Show all" and scroll, replaying it via plain HTTP instead of a
+   browser. I group each page into real items (by the `"Endorse"` marker
+   for Skills, by the `"hr"` divider for Certifications/Education) and
+   stop once a page returns fewer items than a full page would, not a
+   moment before, since a genuinely full page can look short to a naive
+   count. I hit exactly that off-by-one as a real bug, now covered by a
+   regression test (see Tests). Experience was the one exception: its
+   single `"Show all experiences"` details-page request already returns
+   the complete list in one call, no loop needed.
+6. **No browser dependency anywhere in this repo at request-time.**
+   `package.json` has no Playwright/Puppeteer/Selenium entry, and
+   nothing under `lib/` or `src/` launches one. A browser was used once
+   during development, to obtain the initial session cookie and observe
+   the request shapes now baked into `lib/templates.json` -- a one-time
+   setup step, not part of what runs per-request.
 
 ## Known limitations
 
@@ -263,28 +279,31 @@ service. Stated here as an assumption, not confirmed with the client.
   stopped being true, deliberately not added here as it'd be
   over-engineering for the current scale.
 - **Experience entries with multiple roles at the same company** (a
-  promotion history) are not split into individual role objects — an
+  promotion history) are not split into individual role objects -- an
   earlier attempt at this produced confidently-wrong results (mistook an
   employment-type label for a separate job), so the entry is kept whole
   instead, flagged `"multipleRoles": true`, with all real text preserved
   in `description` rather than guessed at.
+- **Scraping at scale on a personal account's session cookie risks
+  account restriction and likely violates LinkedIn's Terms of Service.**
+  Fine for the low-volume use case this is built for; not something to
+  run unattended at high volume.
 - **Self-view** (scraping the account's own profile while logged in as
   that account) hits LinkedIn's edit-mode UI, which structures some
-  fields less cleanly than the public view does. Not the primary use
-  case — this service is for looking up other people's profiles.
+  fields less cleanly than the public view does.
 - **Session cookies expire.** No automatic renewal; re-run Setup step 1
   when a request starts returning `SESSION_EXPIRED`.
 - **PROFILE_NOT_FOUND detection is best-effort**, based on the absence of
-  extractable name/title content — not verified against every way
+  extractable name/title content -- not verified against every way
   LinkedIn can render a missing/private profile.
 - **Request template shapes in `lib/templates.json` can go stale** if
-  LinkedIn changes its frontend build — this shows up as requests failing
+  LinkedIn changes its frontend build -- this shows up as requests failing
   outright (not `SESSION_EXPIRED`; usually a non-200 status or an
   unparseable response). Regenerating them requires re-observing
   LinkedIn's network requests (browser DevTools, or an automated capture
-  — see Approach); that tooling isn't included in this repo.
+  -- see Approach); that tooling isn't included in this repo.
 - No rate limiting or API-key auth on this service's own endpoint by
-  default (`src/middleware/apiKey.ts` is wired but off — set `API_KEY`
+  default (`src/middleware/apiKey.ts` is wired but off -- set `API_KEY`
   to enable). Deliberate: expected usage is low-volume manual testing.
 
 ## Tests
