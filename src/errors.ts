@@ -1,5 +1,5 @@
 // One error shape for the whole app. Routes/services throw these (or let
-// errorHandler.js map an unrecognized error to a generic 500) instead of
+// errorHandler.ts map an unrecognized error to a generic 500) instead of
 // each place inventing its own status-code/message convention.
 
 export class AppError extends Error {

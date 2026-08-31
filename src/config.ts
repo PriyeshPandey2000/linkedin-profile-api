@@ -27,14 +27,14 @@ const config = {
 
   // How long a successfully-scraped profile is served from cache before
   // re-fetching. Protects the single shared LinkedIn session from
-  // redundant concurrent/repeat load (see profileService.js) -- not a
+  // redundant concurrent/repeat load (see profileService.ts) -- not a
   // freshness guarantee, just a short window against duplicate requests.
   profileCacheTtlMs: Number(process.env.PROFILE_CACHE_TTL_MS) || 5 * 60 * 1000,
 
   // Not enforced yet -- deliberately descoped for now (expected usage is
   // low-volume manual/interviewer testing, see README known limitations).
   // Left wired through config/middleware so turning it on later is a
-  // one-line change (uncomment the check in middleware/apiKey.js), not a
+  // one-line change (uncomment the check in middleware/apiKey.ts), not a
   // redesign.
   apiKey: process.env.API_KEY || null,
 };

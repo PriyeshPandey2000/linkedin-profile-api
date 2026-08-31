@@ -534,7 +534,7 @@ if (require.main === module) {
   require('dotenv').config({ quiet: true }); // quiet: the startup banner pollutes stdout JSON output
   const url = process.argv[2];
   if (!url) {
-    console.error('Usage: node fetch-profile.js <linkedin-profile-url>');
+    console.error('Usage: npx tsx lib/fetch-profile.ts <linkedin-profile-url>');
     process.exit(1);
   }
   fetchProfile(url)
