@@ -114,7 +114,7 @@ Live deployment (no local setup needed to try it):
 ```
 curl -X POST https://linkedin-profile-api-coral.vercel.app/profile \
   -H "Content-Type: application/json" \
-  -d '{"url":"https://www.linkedin.com/in/some-person/"}'
+  -d '{"url":"https://www.linkedin.com/in/priyesh-pandey-6575901a0/"}'
 ```
 
 Local dev (after Setup above):
@@ -122,7 +122,7 @@ Local dev (after Setup above):
 ```
 curl -X POST http://localhost:3000/profile \
   -H "Content-Type: application/json" \
-  -d '{"url":"https://www.linkedin.com/in/some-person/"}'
+  -d '{"url":"https://www.linkedin.com/in/priyesh-pandey-6575901a0/"}'
 ```
 
 Response:
