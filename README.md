@@ -64,9 +64,19 @@ only thing needed to run this yourself is a live session cookie:
 
 Log into LinkedIn in a normal browser (your own account -- see the
 **Known limitations** section for the ToS/risk considerations of this).
-Open DevTools → Network tab → click any request to `linkedin.com` →
-under Request Headers, copy the full `Cookie` value (one long string,
-not just `li_at`).
+Open DevTools → Application tab → Cookies → `https://www.linkedin.com` →
+find `li_at` and `JSESSIONID`, copy their values. Build the cookie
+string as:
+
+```
+JSESSIONID=<JSESSIONID value>; li_at=<li_at value>
+```
+
+Example, with made-up placeholder values (yours will be much longer):
+
+```
+JSESSIONID=ajax:7f3a9c21e08b4d65a1; li_at=AQEDAT9kpLmXcNwHAAABlR3pQzYAAAGVQeK9j2wAo4nWdEyzPmR8LxIkVfCuT1qBnHgZs6oPmYlV_Rt3
+```
 
 ### 2. Set it as an environment variable
 
